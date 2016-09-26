@@ -65,13 +65,17 @@ class SeleniumCrawler(Crawler):
                 if (time.time() - self.time_start) > self.configuration.get_max_time():
                     logging.info("|||| TIMO OUT |||| end crawl ")
                     break
-
+                # record log
                 string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
                 logging.info(' action_events : '+string )
 
+                #get next action, state from action list
                 state, action, depth = self.get_next_action()
+                #try backtrack, confirm which state we are
                 self.change_state(state, action, depth)
+                #do something
                 edge = self.trigger_action(state, action, depth)
+                #check which state we are
                 self.update_states(state, edge, action, depth)
 
             self.close()

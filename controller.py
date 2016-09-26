@@ -22,6 +22,9 @@ from visualizer import Visualizer
 # Selenium Web Driver
 #==============================================================================================================================
 def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
+    '''
+    stop working
+    '''
     logging.info(" connect to mysql")
     databank = MysqlDataBank("localhost", "jeff", "zj4bj3jo37788", "test")
     url, deep, time = databank.get_websubmit(web_submit_id)
@@ -43,6 +46,7 @@ def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
     crawler = SeleniumCrawler(config, executor, automata, databank)
     
     logging.info(" crawler start run...")
+    #old method
     automata = crawler.run()
     crawler.close()
     
@@ -53,6 +57,9 @@ def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
     config.save_config('config.json')
 
 def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace_id, method_id, modes):
+    '''
+    stop working
+    '''
     logging.info(" loading config...")
     config = load_config(config_fname)
     config.set_folderpath(folderpath)
@@ -78,7 +85,11 @@ def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace
     Visualizer.generate_html('web', os.path.join(config.get_path('root'), config.get_automata_fname()))
 
 def debugTestMain(folderpath, dirname):
+    '''
+    present working controller Main function
+    '''    
     logging.info(" setting config...")
+    #should open 3 browsers in one time
     config = SeleniumConfiguration(Browser.FireFox, "http://140.112.42.145:2000/demo/nothing/main.html")
     config.set_max_depth(2)
     config.set_max_length(4)
@@ -97,13 +108,19 @@ def debugTestMain(folderpath, dirname):
     logging.info(" setting executor...")
     executor = SeleniumExecutor(config.get_browserID(), config.get_url())
 
-    logging.info(" setting crawler...")
+
+    logging.info(" setting automata...")
     automata = Automata(config)
     databank = InlineDataBank("140.112.42.145:2000", "jeff", "zj4bj3jo37788", "test")
+    
+    logging.info(" setting algorithm...")
     algorithm = MonkeyCrawler() #DFScrawler()
+    
+    logging.info(" setting crawler...")
     crawler = SeleniumCrawler(config, executor, automata, databank, algorithm)
 
     logging.info(" crawler start run...")
+    #new method
     crawler.run_algorithm()
 
     logging.info(" end! save automata...")
