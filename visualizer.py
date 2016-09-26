@@ -66,4 +66,7 @@ class Visualizer:
                 input_graph.string = input_graph_str
                 sf.seek(0)
                 sf.truncate()
-                sf.write(HTMLParser().unescape(soup.prettify()))
+                if sys.version_info.major >= 3:
+                    sf.write(HTMLParser().unescape(soup.prettify()))
+                else:
+                    sf.write(HTMLParser.HTMLParser().unescape(soup.prettify()))

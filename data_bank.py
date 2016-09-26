@@ -6,7 +6,7 @@ Module docstring
 """
 
 from abc import ABCMeta, abstractmethod
-from connecter import mysqlConnect
+#from connecter import mysqlConnect
 
 class DataBank():
     __metaclass__ = ABCMeta
@@ -117,7 +117,7 @@ class MysqlDataBank(DataBank):
 class InlineDataBank(DataBank):
     @classmethod
     def __init__(cls, host, user, password, db):
-        cls._connect = mysqlConnect(host, user, password, db)
+        pass
 
     @classmethod
     def get_types(cls):

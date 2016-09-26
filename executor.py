@@ -58,6 +58,7 @@ class SeleniumExecutor():
     def __init__(self, browserID, url):
         #choose the type of browser
         self.browserID = browserID
+        self.driver = None
         #link to the url
         self.startUrl = url
         self.main_window = None
@@ -66,24 +67,20 @@ class SeleniumExecutor():
     # START / END / RESTART
     #==========================================================================================================================
     def start(self):
-        '''
-            if self.browserID == 1:
-                self.driver = webdriver.Firefox();
-            elif self.browserID == 2:
-                self.driver = webdriver.Chrome(executable_path='C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
-            elif self.browserID == 3:
-                self.driver = webdriver.PhantomJS(executable_path='C:/PhantomJS/bin/phantomjs/phantomjs.exe')
-        '''
+        #在這裡宣告driver
         try:
-            if self.browserID == Browser.FireFox:
-                self.driver = webdriver.Firefox();
-            elif self.browserID == Browser.Chrome:
-                self.driver = webdriver.Chrome(executable_path='/usr/local/share/chromedriver')
-            elif self.browserID == Browser.PhantomJS:
+            if self.browserID == 1:
+                self.driver = webdriver.Firefox()
+            elif self.browserID == 2:
+                self.driver = webdriver.Chrome()
+            elif self.browserID == 3:
                 dcaps = {'acceptSslCerts':True, 'phantomjs.page.settings.resourceTimeout': '5000'}
                 self.driver = webdriver.PhantomJS(desired_capabilities=dcaps,
                     service_args=['--ignore-ssl-errors=true','--ssl-protocol=any'] )
+            elif self.browserID == 4:
+                self.driver = webdriver.Ie()    
             else: #default in firefox
+                print("go into exception in SeleniumExe")
                 self.driver = webdriver.Firefox(); 
             self.driver.set_window_size(1280,960)
             self.driver.implicitly_wait(30)
@@ -112,7 +109,15 @@ class SeleniumExecutor():
 
     #==========================================================================================================================
     # FIRE EVENT
-    #==========================================================================================================================            
+    #==========================================================================================================================
+    def click_event_by_edge(self, edge):
+        self.switch_iframe_and_get_source( edge.get_iframe_list() )
+        self.fill_selects( edge.get_selects() )
+        self.fill_inputs_text( edge.get_inputs() )
+        self.fill_checkboxes( edge.get_checkboxes() )
+        self.fill_radios( edge.get_radios() )
+        self.fire_event( edge.get_clickable() )
+
     def get_element_by_tag(self, element):
         if element.get_id() and not element.get_id().startswith(DomAnalyzer.serial_prefix):
             return self.driver.find_element_by_id( element.get_id() )
@@ -202,6 +207,7 @@ class SeleniumExecutor():
             logging.error(' driver get url : %s \t\t__from executor.py goto_url()', str(e))
 
     def back_history(self):
+        print('back from',self.browserID)
         try:
             time.sleep(1)
             self.driver.back()
@@ -338,3 +344,105 @@ class SeleniumExecutor():
         pass
 
 #==============================================================================================================================
+
+class CBTExecutor(SeleniumExecutor):
+    #原本 executer 的 initial 方式
+    def __init__(self, browserID, url):
+        #choose the type of browser
+        self.browserID = browserID
+        #link to the url
+        self.startUrl = url
+        self.main_window = None
+        self.detail_element_list = []
+        
+
+    #原本的Page 既成方式
+    '''
+    def __init__(self,driver_num,Driver):
+        self.Driver=Driver
+        self.driver=Driver.driver
+        self.url=self.driver.current_url
+        self.title=self.driver.title
+        
+        self.dom_list=self.driver.page_source       
+        self.type_tuple='id','class','a'        
+        self.element_list=[]   
+
+        #self.id_list=driver.find_elements_by_xpath('//*[@id]')
+        #self.class_list = driver.find_elements_by_xpath('//*[@class]')
+        
+        
+        #<id="QQ">
+        #detail_element_list['e_list']="QQ"
+        #detail_element_list['type_tuple']='id'
+        
+        self.detail_element_list = []
+    '''
+      
+
+    def get_element_property(self):
+        self.element_list=self.driver.find_elements_by_xpath('//*')
+        for i in self.element_list:
+            info={
+                'element'       :i,
+                'tag_name'      :i.tag_name,
+                #'x_path'        :i.x_path
+                'type_tuple'    :[],
+                'name_list'     :[],
+
+                'coor':{
+                    'x'         :i.location['x'],
+                    'y'         :i.location['y'],
+                },
+                'size':{
+                    'height'    :i.size['height'],
+                    'width'     :i.size['width'],                   
+                },
+            }
+            store_info=False
+            for j in self.type_tuple:
+                if i.get_attribute(j)!=None and i.get_attribute(j)!="":
+                    info['type_tuple'].append(j)
+                    info['name_list'].append(i.get_attribute(j))
+                    store_info=True
+            if store_info == True:
+                self.detail_element_list.append(info)
+                    
+        return self.detail_element_list                   
+
+    def print_detail_element_list(self):
+        for i in self.detail_element_list:
+            print ("element:"        ,i['element'])
+            #print "xpath:"          ,i['xpath']   
+            for j in range(0,len(i['name_list']),1):
+                print (i['type_tuple'][j],"=",i['name_list'][j])
+            print ("coor:"           ,i['coor']['x']        ,i['coor']['y'])
+            print ("size:"           ,i['size']['height']   ,i['size']['width'])
+    
+    def get_element_attribute(self):
+        for i in self.detail_element_list:
+            if i['coor']['true_x'].find("%")!=-1:
+                print ("define by percentage :",i['type'],'=',i['name'])
+            if i['coor']['true_x'].find("px")!=-1:
+                print ("define by pixel      :",i['type'],'=',i['name'])
+
+    def get_element_screenshot(self):
+        self.driver.get_screenshot_as_file('scr/scr.png')
+        for i in self.detail_element_list:
+            im      = Image.open('scr/scr.png')
+            left    = i['coor']['x']
+            top     = i['coor']['y']
+            right   = i['coor']['x'] + i['size']['width']
+            bottom  = i['coor']['y'] + i['size']['height']
+            im      = im.crop((left, top, right, bottom)) # defines crop points
+            im.save('scr/'+i['name_list'][0]+'.png') # saves new cropped image
+        return 0
+
+    def compare_coor(self, Page):
+        for i in self.detail_element_list:
+            ele_to_compare = Page.find_element_by_xpath(i['xpath'])
+            if i['coor']['x'] != ele_to_compare['coor']['x']:
+                print ("x coor not equal")
+
+
+        return 0

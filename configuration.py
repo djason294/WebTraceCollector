@@ -339,6 +339,7 @@ class Browser(Enum):
     FireFox = 1
     Chrome = 2
     PhantomJS = 3
+    Ie = 4
 
 class MutationMethod(Enum):
     Simple = 1
