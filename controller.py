@@ -8,13 +8,13 @@ Module docstring
 import os, sys, json, posixpath, time, codecs, datetime, logging, traceback
 from configuration import SeleniumConfiguration, Browser, MutationMethod
 from automata import Automata, State
-from algorithm import DFScrawler, MonkeyCrawler
+from algorithm import DFScrawler, MonkeyCrawler, Monkey2Crawler,CBTCrawler
 from clickable import Clickable, InputField, SelectField
-from connecter import mysqlConnect, nullConnect
+#from connecter import mysqlConnect, nullConnect
 from crawler import SeleniumCrawler
 from data_bank import MysqlDataBank, InlineDataBank
 from dom_analyzer import DomAnalyzer
-from executor import SeleniumExecutor
+from executor import SeleniumExecutor,CBTExecutor
 from normalizer import AttributeNormalizer, TagNormalizer, TagWithAttributeNormalizer
 from visualizer import Visualizer
 
@@ -22,9 +22,6 @@ from visualizer import Visualizer
 # Selenium Web Driver
 #==============================================================================================================================
 def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
-    '''
-    stop working
-    '''
     logging.info(" connect to mysql")
     databank = MysqlDataBank("localhost", "jeff", "zj4bj3jo37788", "test")
     url, deep, time = databank.get_websubmit(web_submit_id)
@@ -46,7 +43,6 @@ def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
     crawler = SeleniumCrawler(config, executor, automata, databank)
     
     logging.info(" crawler start run...")
-    #old method
     automata = crawler.run()
     crawler.close()
     
@@ -57,9 +53,6 @@ def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
     config.save_config('config.json')
 
 def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace_id, method_id, modes):
-    '''
-    stop working
-    '''
     logging.info(" loading config...")
     config = load_config(config_fname)
     config.set_folderpath(folderpath)
@@ -84,16 +77,53 @@ def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace
     automata.save_automata(config)    
     Visualizer.generate_html('web', os.path.join(config.get_path('root'), config.get_automata_fname()))
 
-def debugTestMain(folderpath, dirname):
-    '''
-    present working controller Main function
-    '''    
+def CBTestMain(folderpath, dirname, basic_browserID, other_browserID, url):
+    logging.info(" A new CBT begings...")
     logging.info(" setting config...")
-    #should open 3 browsers in one time
+    config = SeleniumConfiguration(int(basic_browserID), url)
+    config.set_max_depth(10)
+    # should be 5
+    config.set_max_length(10)
+    # should be 1
+    config.set_trace_amount(1)
+    config.set_max_states(100)
+    config.set_folderpath(folderpath)
+    config.set_dirname(dirname)
+    config.set_automata_fname('automata.json')
+    config.set_traces_fname('traces.json')
+    #config.set_frame_tags(['iframe'])
+    config.set_dom_inside_iframe(True)
+    config.set_simple_clickable_tags()
+    config.set_simple_inputs_tags()
+    config.set_simple_normalizers()
+
+    logging.info(" setting executor...")
+    executor = CBTExecutor(config.get_browserID(), config.get_url())
+
+    logging.info(" setting crawler...")
+    automata = Automata(config)
+    #databank = InlineDataBank("140.112.42.145:2000", "jeff", "zj4bj3jo37788", "test")
+    databank = InlineDataBank("localhost", "B00901138", "R124249166", "comp")
+    
+    print('start Cross Browser Testing...')
+    algorithm = CBTCrawler(other_browserID,url) #DFScrawler()
+    crawler = SeleniumCrawler(config, executor, automata, databank, algorithm)
+
+    logging.info(" crawler start runing...")
+    crawler.run_algorithm()
+
+    logging.info(" end! save automata...")
+    algorithm.save_traces()
+    automata.save_automata(config.get_automata_fname())
+    Visualizer.generate_html('web', os.path.join(config.get_path('root'), config.get_automata_fname()))
+    config.save_config('config.json')
+
+def debugTestMain(folderpath, dirname):
+    logging.info(" setting config...")
     config = SeleniumConfiguration(Browser.FireFox, "http://140.112.42.145:2000/demo/nothing/main.html")
-    config.set_max_depth(2)
-    config.set_max_length(4)
-    config.set_trace_amount(2)
+    config.set_max_depth(1)
+    config.set_max_length(5)
+    config.set_trace_amount(1)
     config.set_max_states(100)
     config.set_folderpath(folderpath)
     config.set_dirname(dirname)
@@ -108,19 +138,13 @@ def debugTestMain(folderpath, dirname):
     logging.info(" setting executor...")
     executor = SeleniumExecutor(config.get_browserID(), config.get_url())
 
-
-    logging.info(" setting automata...")
+    logging.info(" setting crawler...")
     automata = Automata(config)
     databank = InlineDataBank("140.112.42.145:2000", "jeff", "zj4bj3jo37788", "test")
-    
-    logging.info(" setting algorithm...")
     algorithm = MonkeyCrawler() #DFScrawler()
-    
-    logging.info(" setting crawler...")
     crawler = SeleniumCrawler(config, executor, automata, databank, algorithm)
 
     logging.info(" crawler start run...")
-    #new method
     crawler.run_algorithm()
 
     logging.info(" end! save automata...")
@@ -254,6 +278,30 @@ if __name__ == '__main__':
             except Exception as e:
                 with open("mutant_log.txt","a") as main_log:
                     main_log.write( '[MAIN ERROR-%s]: %s' % (datetime.datetime.now().strftime('%Y%m%d%H%M%S'), traceback.format_exc()) )
+        elif sys.argv[1] == '3':
+            make_dir(sys.argv[2], sys.argv[3])
+            CBTestMain(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],  sys.argv[6])
+        elif sys.argv[1] == '4':
+            try:
+                if not os.path.isdir(sys.argv[3]) or not os.path.exists(sys.argv[3]):
+                    raise ValueError('not found folder')
+                if os.path.exists( os.path.join(sys.argv[3], sys.argv[4]) ):
+                    raise ValueError('dirname already exist')
+                make_dir(sys.argv[3], sys.argv[4])
+                try:
+                    SeleniumMain(sys.argv[2], sys.argv[3], sys.argv[4])
+                    end_log( os.path.join(sys.argv[3], sys.argv[4], 'end.json'), True, 'done')
+                except Exception as e:
+                    end_log( os.path.join(sys.argv[3], sys.argv[4], 'end.json'),False, traceback.format_exc())
+            except Exception as e:  
+                with open("default_log.txt","a") as main_log:
+                    main_log.write( '\n[MAIN ERROR-%s]: %s' % (datetime.datetime.now().strftime('%Y%m%d%H%M%S'), traceback.format_exc()) )
+        
+
+
+
+
+            
         else:
             make_dir(sys.argv[2], sys.argv[3])
             debugTestMain(sys.argv[2], sys.argv[3])
@@ -262,3 +310,4 @@ if __name__ == '__main__':
         print ("[WARNIING] needed argv: <Mode=1> <WebSubmitID> <FolderPath> <Dirname> default crawling ")
         print ("                        <Mode=2> <FolderPath> <Dirname> <ConfigFile> <TracesFile>")
         print ("                                 <TraceID> <MutationMethodID> <MaxTraces> mutant crawling ")
+        print ("                        <Mode=3> <FolderPath> <Dirname> <browser1> <browser2> <website>")

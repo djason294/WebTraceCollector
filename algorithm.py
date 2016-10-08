@@ -495,33 +495,43 @@ class CBTCrawler(AlgoCrawler):
         pass
 
     def check_dom_tree(self):
-        dom_tree ,url  = self.executor.get_dom_list(self.configuration)
+        dom_tree1,url1 = self.executor.get_dom_list(self.configuration)
         dom_tree2,url2 = self.other_executor.get_dom_list(self.configuration)
-        if url!=url2:
+        if url1!=url2:
             print ("different pages")
-        elif dom_tree!=dom_tree2:
+            logging.info(' previous page:%s next page:%s| page changes', url1, url2 )
+
+        elif dom_tree1!=dom_tree2:
             print ("differnt dom_tree")
+            logging.info(' previous dom:%s next dom:%s| dom tree changes', dom_tree1, dom_tree2 )
         else:
             print("same dom tree")
+            logging.info('same dom tree')
 
     def check_diff_browser(self, new_state):
         # 1. check executor other_executor is same state
-
-        # 2. if same , analsis 
         self.analysis_elements( self.executor, new_state )
         self.analysis_elements( self.other_executor, new_state )
 
+        # 2. if same , analsis 
         self.analysis_with_other_browser()
 
     def analysis_with_other_browser( self ):
+        # 1. check url is the same or not : should be the same
+        # 2. check state is the same or not : should be the same
         if self.executor.get_url()== self.other_executor.get_url():
             string="url is same: "+self.executor.get_url()
             print(string)
             logging.info(' CBT_events : '+ string )
+
+        if self.executor.get_url()== self.other_executor.get_url():
+            string="dom tree is same: "+self.executor.get_url()
+            print(string)
+            logging.info(' CBT_events : '+ string )
+
         
 
     def analysis_elements( self, executor , new_state ):
-        
         try:
             #make dir for each screen shot
             pathDir = os.path.join(self.configuration.get_abs_path('state'), str(executor.browserID) )
@@ -534,8 +544,3 @@ class CBTCrawler(AlgoCrawler):
 
         except Exception as e:  
             logging.error(' save screen : %s \t\t__from automata.py save_dom()', str(e))
-
-
-
-
- 
