@@ -265,7 +265,7 @@ class SeleniumExecutor():
         return self.get_source()
 
     def get_screenshot(self, file_path):
-        return self.driver.get_screenshot_as_file(file_path)
+        self.driver.get_screenshot_as_file(file_path)
 
     def get_dom_list(self, configuration):
         #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
@@ -309,6 +309,20 @@ class SeleniumExecutor():
                 'dom' : str(soup),
                 'iframe_path' : iframe_xpath_list,
             } )
+
+    def get_log_list(self,configuration):
+        #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
+        log_list = []
+        url = self.get_url()
+        for entry in self.driver.get_log('browser'):
+            if(entry['level']=="WARNING"):
+                #print('log_info',entry)
+                log_list.append({
+                        'url'  : url,
+                        'log'  : entry,
+                    })
+
+        return log_list, url
 
     #==========================================================================================================================
     # CHECK 
@@ -427,7 +441,8 @@ class CBTExecutor(SeleniumExecutor):
                 print ("define by pixel      :",i['type'],'=',i['name'])
 
     def get_element_screenshot(self):
-        self.driver.get_screenshot_as_file('scr/scr.png')
+        print('===screenshot & elementshot')
+        self.driver.get_screenshot_as_file('scr/scr.png')     
         for i in self.detail_element_list:
             im      = Image.open('scr/scr.png')
             left    = i['coor']['x']

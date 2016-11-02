@@ -6,7 +6,7 @@ Module docstring
 """
 
 from abc import ABCMeta, abstractmethod
-#from connecter import mysqlConnect
+from connecter import mysqlConnect
 
 class DataBank():
     __metaclass__ = ABCMeta
@@ -53,9 +53,9 @@ class MysqlDataBank(DataBank):
 
     @classmethod
     def get_websubmit(cls, web_submit_id):        
-        url, deep, time = cls._connect.get_submit_by_id(web_submit_id)
+        url, deep, time, browser1, browser2 = cls._connect.get_submit_by_id(web_submit_id)
         web_inputs = cls._connect.get_all_inputs_by_id(web_submit_id)
-        return url, deep, time
+        return url, deep, time, browser1, browser2
 
     @classmethod
     def get_data(cls, data_type, data_id):

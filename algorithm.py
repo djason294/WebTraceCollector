@@ -6,6 +6,7 @@ from abc import ABCMeta, abstractmethod
 from configuration import Browser
 from dom_analyzer import DomAnalyzer
 from executor import SeleniumExecutor,CBTExecutor
+from PIL import Image
 
 class AlgoCrawler:
     __metaclass__ = ABCMeta
@@ -116,7 +117,9 @@ class DFScrawler(AlgoCrawler):
         logging.info(' |depth:%s state:%s| add new state %s of : %s', depth, current_state.get_id(), new_state.get_id(), url )
 
         self.automata.save_state(new_state, depth)
+        
         self.automata.save_state_shot(self.executor, new_state)
+
 
         if depth < self.configuration.get_max_depth():
             self.crawler.add_new_events(new_state, current_state, depth)
@@ -168,7 +171,7 @@ class MonkeyCrawler(AlgoCrawler):
             return
 
         clickable, iframe_key = random.choice( candidate_clickables )
-        print(state.get_id(),clickable.get_id(), clickable.get_xpath())
+        #print(state.get_id(),clickable.get_id(), clickable.get_xpath())
         self.crawler.action_events.append( {
             'state'  : state,
             'action' : { 'clickable':clickable, 'iframe_key':iframe_key },
@@ -377,9 +380,9 @@ class Monkey2Crawler(AlgoCrawler):
         self.trace_history = {}
         self.other_executor.close()
 
-    def check_diff_browser(self):
+    def check_difff_browser(self):
+        #should not be active
         # 1. check executor other_executor is same state
-
         # 2. if same , analsis 
         self.analysis_elements( self.executor )
         self.analysis_elements( self.other_executor )
@@ -391,21 +394,27 @@ class Monkey2Crawler(AlgoCrawler):
         if self.executor.get_url()==self.other_executor.get_url():
             print("url is same")
 
-    def analysis_elements( self,executor ):
+    #def analysis_elements( self,executor ):
 
-        self.executor.get_screenshot("pic/ana.png")
+        #self.executor.get_screenshot("pic/ana.png")
         #self.executor
 
 #-------------------------------------------------------------------------------------------------------------------
 #Cross Browser Testing#-------------------------------------------------------------------------------------------------------------------
 
-
+#acually it's CBT algorithm
 class CBTCrawler(AlgoCrawler):
     def __init__(self,other_browserID,url):
-        string='Starting 2nd browser '+other_browserID
+        self.other_browserID = int(other_browserID)
+        string='Starting 2nd browser, browser ID is: '+ str(self.other_browserID)
         print(string)
         logging.info(' CBT_events : '+ string )
-        self.other_executor = CBTExecutor(int(other_browserID), url)
+        #not sure init exe and other_exe together
+        #self.executor = executor
+        if self.other_browserID != 0 :
+            self.other_executor = CBTExecutor(int(self.other_browserID), url)
+        else:
+            print("single browser")
         
 
     def set_utility(self, crawler, configuration, executor, automata):
@@ -418,14 +427,16 @@ class CBTCrawler(AlgoCrawler):
         #executor
         self.executor.start()
         self.executor.goto_url()
-
-        self.other_executor.start()
-        self.other_executor.goto_url()
+        if self.other_browserID != 0 :
+            self.other_executor.start()
+            self.other_executor.goto_url()
 
         #initial state
         initial_state = self.crawler.get_initail_state()
 
-        self.check_diff_browser(initial_state)
+        #should check different browser first
+        if self.other_browserID != 0 :
+            self.check_diff_browser(initial_state)
 
         self.crawler.run_script_before_crawl(initial_state)
 
@@ -445,9 +456,14 @@ class CBTCrawler(AlgoCrawler):
     def change_state(self, state, action, depth):
         logging.info('==========< BACKTRACK START >==========')
         logging.info('==<BACKTRACK> depth %s -> backtrack to state %s',depth ,state.get_id() )
-        print('start back')
-        self.crawler.other_executor_backtrack(state, self.other_executor)
-        self.check_dom_tree()
+        print('===change state, start backtrack')
+        #will ananlyzing this state,dom is same to the original one
+        if self.other_browserID != 0 :
+            self.crawler.other_executor_backtrack(state, self.other_executor)
+        
+        #!!!!!!!!!!!!!!CBT analysis here
+        #self.crawler.cbt_is_same_state_dom(self.other_executor )
+        #self.check_dom_tree()
 
         logging.info('==========< BACKTRACK END   >==========')
 
@@ -455,7 +471,8 @@ class CBTCrawler(AlgoCrawler):
         logging.info(' |depth:%s state:%s| fire element in iframe(%s)', depth, state.get_id(), action['iframe_key'])
         self.crawler.make_value(new_edge)
         self.executor.click_event_by_edge(new_edge)
-        self.other_executor.click_event_by_edge(new_edge)
+        if self.other_browserID != 0 :
+            self.other_executor.click_event_by_edge(new_edge)
 
     def update_with_same_state(self, current_state, new_edge, action, depth, dom_list, url):
         # Do Nothing when same state
@@ -466,19 +483,30 @@ class CBTCrawler(AlgoCrawler):
         logging.info(' |depth:%s state:%s| out of domain: %s', depth, current_state.get_id(), url)
         logging.info('==========< BACKTRACK START >==========')
         logging.info('==<BACKTRACK> depth %s -> backtrack to state %s',depth ,current_state.get_id() )
-        self.crawler.other_executor_backtrack(current_state, self.other_executor)
+        if self.other_browserID != 0 :
+            self.crawler.other_executor_backtrack(current_state, self.other_executor)
         logging.info('==========< BACKTRACK END   >==========')
 
     def update_with_new_state(self, current_state, new_state, new_edge, action, depth, dom_list, url):
         # automata save new state 
         logging.info(' |depth:%s state:%s| add new state %s of : %s', depth, current_state.get_id(), new_state.get_id(), url )
 
+        #save mix pic instead
         self.automata.save_state(new_state, depth)
         self.automata.save_state_shot(self.executor, new_state)
 
 
-        self.check_diff_browser(new_state)
 
+        #!!!!!!!!!!!!!!CBT analysis here
+        
+        if self.other_browserID != 0 :
+            print('===CBT check state')
+            self.check_diff_browser(new_state)
+        
+        #self.check_dom_tree()
+        #str = self.crawler.cbt_is_same_state_dom(self.other_executor )
+        #pr_str=''.join(str)
+        #print(pr_str.encode(sys.stdin.encoding, "replace").decode(sys.stdin.encoding));
         if depth < self.configuration.get_max_depth():
             self.crawler.add_new_events(new_state, current_state, depth)
 
@@ -494,53 +522,110 @@ class CBTCrawler(AlgoCrawler):
     def end(self):
         pass
 
-    def check_dom_tree(self):
-        dom_tree1,url1 = self.executor.get_dom_list(self.configuration)
-        dom_tree2,url2 = self.other_executor.get_dom_list(self.configuration)
-        if url1!=url2:
-            print ("different pages")
-            logging.info(' previous page:%s next page:%s| page changes', url1, url2 )
-
-        elif dom_tree1!=dom_tree2:
-            print ("differnt dom_tree")
-            logging.info(' previous dom:%s next dom:%s| dom tree changes', dom_tree1, dom_tree2 )
-        else:
-            print("same dom tree")
-            logging.info('same dom tree')
-
+    
+    
     def check_diff_browser(self, new_state):
+        
+        # 0. get photo
+        self.compare_screenshot(new_state)
         # 1. check executor other_executor is same state
-        self.analysis_elements( self.executor, new_state )
-        self.analysis_elements( self.other_executor, new_state )
-
+        #self.automata.save_state_CBT(new_state, depth)
+        #self.automata.save_state(new_state, depth)
         # 2. if same , analsis 
+        
         self.analysis_with_other_browser()
 
+    
+    
     def analysis_with_other_browser( self ):
         # 1. check url is the same or not : should be the same
         # 2. check state is the same or not : should be the same
-        if self.executor.get_url()== self.other_executor.get_url():
+        
+        dom_list1,url1 =self.executor.get_dom_list(self.configuration)
+        dom_list2,url2 =self.other_executor.get_dom_list(self.configuration)
+
+        if url1!=url2:
+            print ("===different pages")
+            logging.info('CBT:browser 1 page:%s browser 2 page:%s| page are different', url1, url2 )
+        elif url1==url2:
             string="url is same: "+self.executor.get_url()
             print(string)
             logging.info(' CBT_events : '+ string )
-
-        if self.executor.get_url()== self.other_executor.get_url():
+        '''
+        if dom_list1==dom_list2:
             string="dom tree is same: "+self.executor.get_url()
             print(string)
             logging.info(' CBT_events : '+ string )
+        '''
+        if DomAnalyzer.is_equal(dom_list1[0]['dom'],dom_list2[0]['dom']):
+            print("===same dom tree")
+            logging.info('CBT: same dom tree')
+        else:
+            print ("===different dom_tree")
+            #need domtree mapping
+            logging.info('CBT: browser 1 dom:%s browser 2 dom:%s| dom trees are different', url1, url2 )
 
+        log_list1,url1=self.executor.get_log_list(self.configuration)
+        log_list2,url2=self.other_executor.get_log_list(self.configuration)
+
+    def compare_screenshot(self, new_state):
+        pathPng =self.save_screenshot(self.executor,new_state)
+        pathPng2=self.save_screenshot(self.other_executor,new_state)
+
+        #im1 = Image.open( pathPng  )
+        #im2 = Image.open( pathPng2 )
+        #ims = map(Image.open, [pathPng ,pathPng2])
+        ims =[Image.open(pathPng), Image.open(pathPng2)]
+        widths,heights =zip(*(i.size for i in ims))
+
+        total_width = sum(widths)
+        max_height = max(heights)
+
+        new_im = Image.new('RGB', (total_width, max_height))
+        x_offset = 0
+        for im in ims:
+            new_im.paste(im, (x_offset,0))
+            x_offset += im.size[0]        
+
+        pathDIR = os.path.join(self.configuration.get_abs_path('state'), new_state.get_id() + '.png')
+        new_im.save(pathDIR)
+
+    #no use
+    def check_dom_tree(self):
+      
         
-
-    def analysis_elements( self, executor , new_state ):
+        if url1!=url2:
+            print ("===different pages")
+            logging.info('CBT:browser 1 page:%s browser 2 page:%s| page are different', url1, url2 )
+        if DomAnalyzer.is_equal(dom_tree1,dom_tree2):
+            print("===same dom tree")
+            logging.info('CBT: same dom tree')
+        else:
+            print ("===different dom_tree")
+            #need domtree mapping
+            logging.info('CBT: browser 1 dom:%s browser 2 dom:%s| dom trees are different', url1, url2 )
+        
+    
+    def save_screenshot( self, executor , new_state ):
+        
         try:
             #make dir for each screen shot
-            pathDir = os.path.join(self.configuration.get_abs_path('state'), str(executor.browserID) )
-            pathPng = os.path.join(self.configuration.get_abs_path('state'), str(executor.browserID), new_state.get_id()+'.png')
-
+            pathDir = os.path.join(self.configuration.get_abs_path('state'), 'browser_'+str(executor.browserID) )
+            pathPng = os.path.join(self.configuration.get_abs_path('state'), 'browser_'+str(executor.browserID), new_state.get_id()+'.png')
             if not os.path.isdir(pathDir):
                 os.makedirs(pathDir)
 
-            executor.get_screenshot(pathPng)
-
+            executor.get_screenshot(pathPng )
         except Exception as e:  
             logging.error(' save screen : %s \t\t__from automata.py save_dom()', str(e))
+
+        return pathPng
+    
+
+
+
+
+
+
+
+    

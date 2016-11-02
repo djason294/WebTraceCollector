@@ -54,26 +54,51 @@ class SeleniumCrawler(Crawler):
         self.crawl(1)
         return self.automata
 
+    #the core
     def run_algorithm(self):
         # repeat for trace_amount times
         for i in range( self.configuration.get_trace_amount() ):
-
+            print ('=initial a for_loop / a trace')
             self.initial()
+            
+            j=0
+            while self.action_events :
 
-            while self.action_events:
+                #chech loop times
+                print ('=go into a loop',j)
+                
                 #check time
                 if (time.time() - self.time_start) > self.configuration.get_max_time():
                     logging.info("|||| TIMO OUT |||| end crawl ")
                     break
-
-                string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
+                print('==start an action event')
+                #string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
+                string = ''.join([ str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
                 logging.info(' action_events : '+string )
-
+                print(' action_events : '+string)
+                print('==get next action')
                 state, action, depth = self.get_next_action()
+                
+                print('==change state')
                 self.change_state(state, action, depth)
+                print('==change edge')
                 edge = self.trigger_action(state, action, depth)
-                self.update_states(state, edge, action, depth)
-
+                print('==update state')
+                new_state,new_depth =self.update_states(state, edge, action, depth)
+                print('==end an action event')
+                print ("new depth:", new_depth)
+                print ("max depth:", self.configuration.get_max_depth())
+                print ("new state:", new_state.get_id(),j)
+                print ("max state:", self.configuration.get_max_states())
+                if new_depth > self.configuration.get_max_depth():
+                    print("reach max depth")
+                    break
+                if int(new_state.get_id()) > self.configuration.get_max_states():
+                    print("reach max state")
+                    break
+                j=j+1
+                
+            print('=end a for_loop')
             self.close()
         
         return self.automata
@@ -113,11 +138,13 @@ class SeleniumCrawler(Crawler):
         self.algorithm.trigger_action( state, new_edge, action, depth )
         return new_edge
 
+    #have to run two automata in p2b2?
     def update_states(self, current_state, new_edge, action, depth):
         dom_list, url, is_same = self.is_same_state_dom(current_state)
 
         if is_same:
             self.algorithm.update_with_same_state(current_state, new_edge, action, depth, dom_list, url)
+            return current_state,depth
 
         if self.is_same_domain(url):
             logging.info(' |depth:%s state:%s| change dom to: %s', depth, current_state.get_id(), self.executor.get_url())
@@ -135,12 +162,15 @@ class SeleniumCrawler(Crawler):
 
             if is_newly_added:
                 self.algorithm.update_with_new_state(current_state, new_state, new_edge, action, depth, dom_list, url)
+                return new_state,depth
 
             else:
                 self.algorithm.update_with_old_state(current_state, new_state, new_edge, action, depth, dom_list, url)
+                return new_state,depth
 
         else:
             self.algorithm.update_with_out_of_domain(current_state, new_edge, action, depth, dom_list, url)
+            return new_state,depth
 
     def add_new_events(self, state, prev_state, depth):
         self.algorithm.add_new_events(state, prev_state, depth)
@@ -273,16 +303,18 @@ class SeleniumCrawler(Crawler):
             logging.info('==<BACKTRACK> : try refresh')
             self.executor.refresh()
             other_executor.refresh()
+            #!!!!!!!!CBT
             dom_list, url, is_same = self.is_same_state_dom(state)
+            
             if is_same:
                 return True
 
         #if can't , try go back form history
-        logging.info('==<BACKTRACK> : try back_history ')
+        logging.info('==<BACKTRACK> : other exe try back_history ')
         self.executor.back_history()
         print('exe back')
         other_executor.back_history()
-        print('other back')
+        print('other exe back')
         dom_list, url, is_same = self.is_same_state_dom(state)
         if is_same:
             return True
@@ -402,6 +434,7 @@ class SeleniumCrawler(Crawler):
             return False
 
     def is_same_state_dom(self, cs):
+        #cs is other executor's state,or previous state
         dom_list, url = self.executor.get_dom_list(self.configuration)
         cs_dom_list = cs.get_dom_list(self.configuration)
         if url != cs.get_url():
@@ -414,6 +447,21 @@ class SeleniumCrawler(Crawler):
                     return dom_list, url, False
         print ('same dom to: ', cs.get_id())
         return dom_list, url, True
+
+    def cbt_is_same_state_dom(self, cs):
+        #cs is other executor
+        dom_list, url = self.executor.get_dom_list(self.configuration)
+        cs_dom_list = cs.get_dom_list(self.configuration)
+        if url != cs.get_url():
+            str=("urls are different:%s v.s %s",url,cs.get_url())
+            return str
+        else:
+            for dom, cs_dom in zip(dom_list, cs_dom_list):
+                if not dom == cs_dom:
+                    str=("dom are different")
+                    return str
+        str = 'same dom to: ', cs.get_id()
+        return str
 
 
 #=========================================================================================
@@ -453,7 +501,7 @@ class SeleniumCrawler(Crawler):
         # use a int to select sample of mutation traces
         mutation_traces = self.mutation.get_mutation_traces()
         #mutation_traces = random.sample( mutation_traces, 
-        #    min( self.configuration.get_max_mutation_traces(), len(mutation_traces) ) )
+        #min( self.configuration.get_max_mutation_traces(), len(mutation_traces) ) )
         return mutation_traces
 
     def run_mutant_script(self, prev_state, mutation_trace=None):

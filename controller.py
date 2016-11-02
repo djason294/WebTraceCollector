@@ -10,7 +10,7 @@ from configuration import SeleniumConfiguration, Browser, MutationMethod
 from automata import Automata, State
 from algorithm import DFScrawler, MonkeyCrawler, Monkey2Crawler,CBTCrawler
 from clickable import Clickable, InputField, SelectField
-#from connecter import mysqlConnect, nullConnect
+from connecter import mysqlConnect, nullConnect
 from crawler import SeleniumCrawler
 from data_bank import MysqlDataBank, InlineDataBank
 from dom_analyzer import DomAnalyzer
@@ -23,10 +23,13 @@ from visualizer import Visualizer
 #==============================================================================================================================
 def SeleniumMain(web_submit_id, folderpath=None, dirname=None):
     logging.info(" connect to mysql")
-    databank = MysqlDataBank("localhost", "jeff", "zj4bj3jo37788", "test")
+    print("connect to sql")
+    databank = MysqlDataBank("localhost", "root", "", "test")
     url, deep, time = databank.get_websubmit(web_submit_id)
 
     logging.info(" setting config...")
+    print(" setting config...")
+
     config = SeleniumConfiguration(Browser.PhantomJS, url, folderpath, dirname)
     config.set_max_depth(deep)
     config.set_max_time(int(time)*60)
@@ -66,7 +69,7 @@ def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace
 
     logging.info(" setting crawler...")
     automata = Automata()
-    databank = MysqlDataBank("localhost", "jeff", "zj4bj3jo37788", "test")
+    databank = MysqlDataBank("localhost", "B00901138", "R124249166", "test")
     crawler = SeleniumCrawler(config, executor, automata, databank)
 
     logging.info(" crawler start run...")
@@ -77,16 +80,27 @@ def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace
     automata.save_automata(config)    
     Visualizer.generate_html('web', os.path.join(config.get_path('root'), config.get_automata_fname()))
 
-def CBTestMain(folderpath, dirname, basic_browserID, other_browserID, url):
+def CBTestMain(folderpath, dirname,web_submit_id):
+    logging.info(" Type: Cross Browser Testing")
+    logging.info(" connect to mysql")
+    print("connect to sql")
+    databank = MysqlDataBank("localhost", "root", "", "test")
+    url, deep, time, b1, b2 = databank.get_websubmit(int(web_submit_id))
+    basic_browserID = str(b1)
+    other_browserID = str(b2)
+    depth = int(deep)
+
     logging.info(" A new CBT begings...")
     logging.info(" setting config...")
     config = SeleniumConfiguration(int(basic_browserID), url)
-    config.set_max_depth(10)
-    # should be 5
-    config.set_max_length(10)
+    # max 3
+    config.set_max_depth(int(depth))
+    # max 3
+    config.set_max_length(int(depth))
     # should be 1
     config.set_trace_amount(1)
-    config.set_max_states(100)
+    # should be 100 no use?
+    config.set_max_states(5)
     config.set_folderpath(folderpath)
     config.set_dirname(dirname)
     config.set_automata_fname('automata.json')
@@ -98,15 +112,18 @@ def CBTestMain(folderpath, dirname, basic_browserID, other_browserID, url):
     config.set_simple_normalizers()
 
     logging.info(" setting executor...")
+    #nothing here
     executor = CBTExecutor(config.get_browserID(), config.get_url())
 
     logging.info(" setting crawler...")
     automata = Automata(config)
     #databank = InlineDataBank("140.112.42.145:2000", "jeff", "zj4bj3jo37788", "test")
-    databank = InlineDataBank("localhost", "B00901138", "R124249166", "comp")
+    databank = InlineDataBank("localhost", "B00901138", "R124249166", "test")
     
     print('start Cross Browser Testing...')
-    algorithm = CBTCrawler(other_browserID,url) #DFScrawler()
+    #acually it's CBT algorithm
+    algorithm = CBTCrawler(int(other_browserID),url)
+
     crawler = SeleniumCrawler(config, executor, automata, databank, algorithm)
 
     logging.info(" crawler start runing...")
@@ -280,7 +297,7 @@ if __name__ == '__main__':
                     main_log.write( '[MAIN ERROR-%s]: %s' % (datetime.datetime.now().strftime('%Y%m%d%H%M%S'), traceback.format_exc()) )
         elif sys.argv[1] == '3':
             make_dir(sys.argv[2], sys.argv[3])
-            CBTestMain(sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5],  sys.argv[6])
+            CBTestMain(sys.argv[2], sys.argv[3],sys.argv[4])
         elif sys.argv[1] == '4':
             try:
                 if not os.path.isdir(sys.argv[3]) or not os.path.exists(sys.argv[3]):
@@ -310,4 +327,4 @@ if __name__ == '__main__':
         print ("[WARNIING] needed argv: <Mode=1> <WebSubmitID> <FolderPath> <Dirname> default crawling ")
         print ("                        <Mode=2> <FolderPath> <Dirname> <ConfigFile> <TracesFile>")
         print ("                                 <TraceID> <MutationMethodID> <MaxTraces> mutant crawling ")
-        print ("                        <Mode=3> <FolderPath> <Dirname> <browser1> <browser2> <website>")
+        print ("                        <Mode=3> <FolderPath> <Dirname> <depth> <browser1> <browser2> <website>")
