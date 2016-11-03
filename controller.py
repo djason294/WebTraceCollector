@@ -92,7 +92,7 @@ def CBTestMain(folderpath, dirname,web_submit_id):
 
     logging.info(" A new CBT begings...")
     logging.info(" setting config...")
-    config = SeleniumConfiguration(int(basic_browserID), url)
+    config = SeleniumConfiguration(int(basic_browserID),int(other_browserID), url)
     # max 3
     config.set_max_depth(int(depth))
     # max 3
@@ -128,7 +128,8 @@ def CBTestMain(folderpath, dirname,web_submit_id):
 
     logging.info(" crawler start runing...")
     crawler.run_algorithm()
-
+    
+    print(" end! save automata...")
     logging.info(" end! save automata...")
     algorithm.save_traces()
     automata.save_automata(config.get_automata_fname())
@@ -251,7 +252,7 @@ def make_log(folderpath, dirname):
     logging.basicConfig(filename=filename, level=level, format=form)
 
 def end_log(filename, complete, note):
-    with open(filename, 'w') as end_file:
+    with codecs.open( filename,'w', encoding='utf-8' ) as end_file:
         end = {
             'complete': complete,
             'note': note
@@ -297,7 +298,11 @@ if __name__ == '__main__':
                     main_log.write( '[MAIN ERROR-%s]: %s' % (datetime.datetime.now().strftime('%Y%m%d%H%M%S'), traceback.format_exc()) )
         elif sys.argv[1] == '3':
             make_dir(sys.argv[2], sys.argv[3])
-            CBTestMain(sys.argv[2], sys.argv[3],sys.argv[4])
+            try:
+                CBTestMain(sys.argv[2], sys.argv[3],sys.argv[4])
+                end_log( os.path.join(sys.argv[2], sys.argv[3], 'end.json'), True, 'done')
+            except Exception as e:
+                end_log( os.path.join(sys.argv[2], sys.argv[3], 'end.json'),False, traceback.format_exc())
         elif sys.argv[1] == '4':
             try:
                 if not os.path.isdir(sys.argv[3]) or not os.path.exists(sys.argv[3]):

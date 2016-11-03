@@ -75,7 +75,7 @@ class SeleniumCrawler(Crawler):
                 #string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
                 string = ''.join([ str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
                 logging.info(' action_events : '+string )
-                print(' action_events : '+string)
+                #print(' action_events : '+string)
                 print('==get next action')
                 state, action, depth = self.get_next_action()
                 
@@ -115,6 +115,7 @@ class SeleniumCrawler(Crawler):
     def close(self):
         self.algorithm.end()
         self.executor.close()
+        print("close browser")
 
     def get_next_action(self):
         event = self.algorithm.get_next_action( self.action_events )
@@ -170,6 +171,7 @@ class SeleniumCrawler(Crawler):
 
         else:
             self.algorithm.update_with_out_of_domain(current_state, new_edge, action, depth, dom_list, url)
+            #return new_state,depth
             return new_state,depth
 
     def add_new_events(self, state, prev_state, depth):
@@ -186,6 +188,7 @@ class SeleniumCrawler(Crawler):
         if is_new:
             self.automata.save_state( initial_state, 0)
             self.automata.save_state_shot(self.executor, initial_state)
+            self.automata.save_log(self.executor,initial_state)
         else:
             self.automata.change_state(state)
         time.sleep(self.configuration.get_sleep_time())

@@ -166,7 +166,7 @@ class Automata:
                     json.dump(state.get_checkboxes_json(iframe_key ),            f, indent=2, sort_keys=True, ensure_ascii=False)
                 with codecs.open( os.path.join( dom_dir, state.get_id()+'_clicks.txt'),     'w', encoding='utf-8' ) as f:
                     json.dump(state.get_candidate_clickables_json( iframe_key ), f, indent=2, sort_keys=True, ensure_ascii=False)
-
+                
             with codecs.open( os.path.join( state_dir, 'iframe_list.json'),  'w', encoding='utf-8' ) as f:
                 json.dump( iframe_key_dict, f, indent=2, sort_keys=True, ensure_ascii=False)
 
@@ -195,7 +195,7 @@ class Automata:
             selects[iframe_key] = DomAnalyzer.get_selects(dom)
             checkboxes[iframe_key] = DomAnalyzer.get_checkboxes(dom)
             radios[iframe_key] = DomAnalyzer.get_radios(dom)
-
+            
         state.set_candidate_clickables(candidate_clickables)
         state.set_inputs(inputs)
         state.set_selects(selects)
@@ -208,6 +208,11 @@ class Automata:
     def save_state_shot(self, executor, state):
         path = os.path.join(self.configuration.get_abs_path('state'), state.get_id() + '.png')
         executor.get_screenshot(path)
+
+    def save_log(self, executor, state):
+
+        pathDir = os.path.join(self.configuration.get_abs_path('log'), state.get_id() )
+        executor.get_log(pathDir)
 
     def save_traces(self, traces):
         traces_data = {
@@ -723,6 +728,13 @@ class State:
                                     configuration.get_path('state'),
                                     configuration.get_path('root')
                                     ).split(os.sep) ) ), self._id  + '.png' ),
+            'log_path': posixpath.join(
+                            posixpath.join(
+                                *(relpath(
+                                    configuration.get_path('log'),
+                                    configuration.get_path('root')
+                                    ).split(os.sep) ) ), self._id, 'browser_'+str(configuration._browserID) + '.json' ),
+
             'clickable': self.get_all_clickables_json(),
             'inputs': self.get_all_inputs_json(),
             'selects': self.get_all_selects_json(),
@@ -747,6 +759,12 @@ class State:
                                     configuration.get_path('state'),
                                     configuration.get_path('root')
                                     ).split(os.sep) ) ), self._id  + '.png' ),
+            'log_path': posixpath.join(
+                            posixpath.join(
+                                *(relpath(
+                                    configuration.get_path('log'),
+                                    configuration.get_path('root')
+                                    ).split(os.sep) ) ), self._id ,'browser_'+ str( configuration._browserID)+ '.json' ),
             'depth': self._depth
         }
         return state_data

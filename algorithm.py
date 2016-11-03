@@ -494,6 +494,7 @@ class CBTCrawler(AlgoCrawler):
         #save mix pic instead
         self.automata.save_state(new_state, depth)
         self.automata.save_state_shot(self.executor, new_state)
+        self.automata.save_log(self.executor, new_state)
 
 
 
@@ -520,6 +521,8 @@ class CBTCrawler(AlgoCrawler):
         self.automata.save_simple_traces()
 
     def end(self):
+        if self.other_browserID != 0 :
+            self.other_executor.close()
         pass
 
     
@@ -565,8 +568,8 @@ class CBTCrawler(AlgoCrawler):
             #need domtree mapping
             logging.info('CBT: browser 1 dom:%s browser 2 dom:%s| dom trees are different', url1, url2 )
 
-        log_list1,url1=self.executor.get_log_list(self.configuration)
-        log_list2,url2=self.other_executor.get_log_list(self.configuration)
+        #log_list1=self.executor.get_log_list(self.configuration)
+        #log_list2=self.other_executor.get_log_list(self.configuration)
 
     def compare_screenshot(self, new_state):
         pathPng =self.save_screenshot(self.executor,new_state)

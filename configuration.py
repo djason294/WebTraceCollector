@@ -53,9 +53,10 @@ class Configuration:
 # Selenium Web Driver
 #==============================================================================================================================
 class SeleniumConfiguration(Configuration):
-    def __init__(self, browserID, url, folderpath=None, dirname=None ):
+    def __init__(self, browserID, other_browserID, url, folderpath=None, dirname=None ):
         super(SeleniumConfiguration, self).__init__()
         self._browserID = browserID
+        self._other_browserID = other_browserID
         self._url = url
         self._dirname = dirname
         self._folderpath = folderpath
@@ -103,7 +104,8 @@ class SeleniumConfiguration(Configuration):
         self._file_path = {
             'root': self._root_path,
             'dom': os.path.join(self._root_path, 'dom'),
-            'state': os.path.join(self._root_path, 'screenshot', 'state')
+            'state': os.path.join(self._root_path, 'screenshot', 'state'),
+            'log': os.path.join(self._root_path, 'log')
         }
 
     def get_abs_path(self, my_type):
@@ -314,6 +316,9 @@ class SeleniumConfiguration(Configuration):
         )
         config_data['state_path'] = posixpath.join(
             posixpath.join(*(self.get_path('state').split(os.sep)))
+        )
+        config_data['log_path'] = posixpath.join(
+            posixpath.join(*(self.get_path('log').split(os.sep)))
         )
         #=============================================================================================
         #new config

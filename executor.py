@@ -5,7 +5,7 @@
 Test case executor (a.k.a. robot)
 """
 
-import sys, os, time, logging
+import sys, os, time, logging, json,codecs,logging
 
 from abc import ABCMeta, abstractmethod
 from dom_analyzer import DomAnalyzer
@@ -267,10 +267,28 @@ class SeleniumExecutor():
     def get_screenshot(self, file_path):
         self.driver.get_screenshot_as_file(file_path)
 
+    def get_log(self,pathDir):
+        #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
+        if not os.path.exists(pathDir):
+            os.makedirs(pathDir)
+            print(pathDir)
+        file_path = os.path.join(pathDir,'browser_'+str(self.browserID)+'.json')
+        
+        
+        url = self.get_url()
+        log_list = {'url': url,'filepath': file_path,'log':[]}
+        for entry in self.driver.get_log('browser'):
+            print(entry)
+            log_list['log'].append(entry)
+        with codecs.open( file_path,'w', encoding='utf-8' ) as f:
+            json.dump(log_list, f, indent=3, sort_keys=True, ensure_ascii=False)
+        return log_list
+
     def get_dom_list(self, configuration):
         #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
         dom_list = []
         new_dom = self.switch_iframe_and_get_source()
+
         url = self.get_url()
         soup = BeautifulSoup(new_dom, 'html5lib')
         for frame in configuration.get_frame_tags():
@@ -288,6 +306,7 @@ class SeleniumExecutor():
                 'dom' : str(soup),
                 'iframe_path' : None,
             } )
+        brID=self.browserID
 
         return dom_list, url
 
@@ -310,19 +329,7 @@ class SeleniumExecutor():
                 'iframe_path' : iframe_xpath_list,
             } )
 
-    def get_log_list(self,configuration):
-        #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
-        log_list = []
-        url = self.get_url()
-        for entry in self.driver.get_log('browser'):
-            if(entry['level']=="WARNING"):
-                #print('log_info',entry)
-                log_list.append({
-                        'url'  : url,
-                        'log'  : entry,
-                    })
-
-        return log_list, url
+    
 
     #==========================================================================================================================
     # CHECK 
