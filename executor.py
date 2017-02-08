@@ -74,17 +74,13 @@ class SeleniumExecutor():
             elif self.browserID == 2:
                 self.driver = webdriver.Chrome()
             elif self.browserID == 3:
-                dcaps = {'acceptSslCerts':True, 'phantomjs.page.settings.resourceTimeout': '5000'}
-                self.driver = webdriver.PhantomJS(desired_capabilities=dcaps,
-                    service_args=['--ignore-ssl-errors=true','--ssl-protocol=any'] )
-            elif self.browserID == 4:
                 self.driver = webdriver.Ie()    
             else: #default in firefox
                 print("go into exception in SeleniumExe")
                 self.driver = webdriver.Firefox(); 
             self.driver.set_window_size(1280,960)
-            self.driver.implicitly_wait(30)
-            self.driver.set_page_load_timeout(30)
+            self.driver.implicitly_wait(15)
+            self.driver.set_page_load_timeout(15)
 
             self.main_window = self.driver.current_window_handle
         except Exception as e:
@@ -99,7 +95,10 @@ class SeleniumExecutor():
 
     def close(self):
         try:
-            self.driver.close()
+            for handle in self.driver.window_handles:
+                self.driver.switch_to_window(handle)
+                logging.info(" closing: %s", str(self.driver))
+                self.driver.quit()
         except Exception as e:
             logging.error(' close : %s \t\t__from executor.py close()', str(e))
 
@@ -214,6 +213,7 @@ class SeleniumExecutor():
             self.check_after_click()
         except Exception as e:
             logging.error(' back : %s \t\t__from executor.py back_history()', str(e))
+            self.driver.get(self.startUrl)
 
     def forward_history(self):
         try:
@@ -238,18 +238,6 @@ class SeleniumExecutor():
             text = self.driver.page_source
         except Exception as e:
             logging.error(' %s \t\t__from executor.py get_source()', str(e))
-            self.driver.refresh()
-            self.check_after_click()
-            text = self.driver.page_source
-        except Exception as e:
-            logging.error(' %s \t\t__from executor.py get_source()', str(e))
-            url = self.driver.current_url
-            self.driver.close()
-            self.start()
-            self.driver.get(url)
-            text = self.driver.page_source
-        except Exception as e:
-            logging.error(' %s \t\t__from executor.py get_source()', str(e))
             text = "ERROR! cannot load file"
         return text.encode('utf-8')
 
@@ -270,19 +258,61 @@ class SeleniumExecutor():
     def get_log(self,pathDir):
         #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
         if not os.path.exists(pathDir):
-            os.makedirs(pathDir)
-            print(pathDir)
+            os.makedirs(pathDir)        
         file_path = os.path.join(pathDir,'browser_'+str(self.browserID)+'.json')
-        
-        
         url = self.get_url()
         log_list = {'url': url,'filepath': file_path,'log':[]}
-        for entry in self.driver.get_log('browser'):
-            print(entry)
-            log_list['log'].append(entry)
+
+        try:
+            for entry in self.driver.get_log('browser'):
+                print(entry)
+                log_list['log'].append(entry)
+        except Exception as e:
+            print(str(e))
         with codecs.open( file_path,'w', encoding='utf-8' ) as f:
             json.dump(log_list, f, indent=3, sort_keys=True, ensure_ascii=False)
+        print('===log record finished')
         return log_list
+
+    def get_coor(self,pathDir):
+        #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
+        print("===get coor")
+        if not os.path.exists(pathDir):
+            os.makedirs(pathDir)        
+        file_path = os.path.join(pathDir,'browser_'+str(self.browserID)+'.json') 
+        url = self.get_url()
+        coor_list = {'url': url,'filepath': file_path,'elements':[]}
+        element_list=self.driver.find_elements_by_xpath('//*[@id]')
+        for i in element_list:
+            single_element={
+                'element_id'    :str(i),
+                'tag_name'      :str(i.tag_name),
+                #'x_path'        :i.x_path
+                'type'    :"none",
+                'name'     :"none",
+                'coor':{
+                    'x'         :i.location['x'],
+                    'y'         :i.location['y'],
+                },
+                'size':{
+                    'height'    :i.size['height'],
+                    'width'     :i.size['width'],                   
+                },
+            }
+            store_single_element = False
+            #tagname = id, select, a,list
+            for j in ['id']:
+                if  i.get_attribute(j)!=None and i.get_attribute(j)!="":
+                    single_element['type'] = j
+                    single_element['name'] = i.get_attribute(j)
+                    store_single_element=True
+            if store_single_element == True:
+                coor_list['elements'].append(single_element)
+                
+        with codecs.open( file_path,'w', encoding='utf-8' ) as f:
+            json.dump(coor_list, f, indent=2, sort_keys=True, ensure_ascii=False)
+        print('===coor record finished')
+        return coor_list
 
     def get_dom_list(self, configuration):
         #save dom of iframe in list of StateDom [iframe_path_list, dom, url/src, normalize dom]
@@ -358,6 +388,7 @@ class SeleniumExecutor():
             for handle in self.driver.window_handles:
                 if handle != self.main_window:
                     self.driver.switch_to_window(handle)
+                    logging.info(" closing: %s", str(self.driver))
                     self.driver.close()
             self.driver.switch_to_window(self.main_window)
 
@@ -458,13 +489,4 @@ class CBTExecutor(SeleniumExecutor):
             bottom  = i['coor']['y'] + i['size']['height']
             im      = im.crop((left, top, right, bottom)) # defines crop points
             im.save('scr/'+i['name_list'][0]+'.png') # saves new cropped image
-        return 0
-
-    def compare_coor(self, Page):
-        for i in self.detail_element_list:
-            ele_to_compare = Page.find_element_by_xpath(i['xpath'])
-            if i['coor']['x'] != ele_to_compare['coor']['x']:
-                print ("x coor not equal")
-
-
         return 0

@@ -27,14 +27,15 @@ class mysqlConnect:
 
     @classmethod
     def get_submit_by_id(cls, submit_id):
-        sql = "SELECT * FROM webtesting WHERE id = %s" % ( submit_id )
+        sql = "SELECT * FROM webtesting WHERE id = %s" % (submit_id)
         logging.info(str(cls))
         logging.info(sql)
-
         cls.exec_sql(sql)
         cls.data = cls.cursor.fetchone()
-        #data [0]id, [1]url, [2]deep, [3]time
-        return cls.data[1], cls.data[2], cls.data[3], cls.data[4], cls.data[5]
+        #logging.info(str(cls.data[1]), str(cls.data[2]), str(cls.data[3]), str(cls.data[4]), str(cls.data[5]))
+        
+        #data [0]id, [1]url, [2]deep, [3]time, [4]browser1, [5]browser2
+        return str(cls.data[1]), int(cls.data[2]), int(cls.data[3]), int(cls.data[4]), int(cls.data[5])
 
     @classmethod
     def get_all_inputs_by_id(cls, submit_id):

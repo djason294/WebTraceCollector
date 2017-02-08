@@ -210,9 +210,14 @@ class Automata:
         executor.get_screenshot(path)
 
     def save_log(self, executor, state):
-
+        print('===save log')
         pathDir = os.path.join(self.configuration.get_abs_path('log'), state.get_id() )
-        executor.get_log(pathDir)
+        return executor.get_log(pathDir)
+
+    def save_coor(self, executor, state):
+        print('===save coor')
+        pathDir = os.path.join(self.configuration.get_abs_path('coor'), state.get_id() )
+        return executor.get_coor(pathDir)
 
     def save_traces(self, traces):
         traces_data = {

@@ -138,7 +138,7 @@ class InlineDataBank(DataBank):
 
     @classmethod
     def get_data(cls, data_type, data_id):
-        return [ '0' ]
+        return ['0']
 
     @classmethod
     def get_mutation_data_set(cls, data_type, data_id, modes):

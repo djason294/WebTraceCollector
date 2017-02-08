@@ -83,6 +83,7 @@ def SeleniumMutationTrace(folderpath, dirname, config_fname, traces_fname, trace
 def CBTestMain(folderpath, dirname,web_submit_id):
     logging.info(" Type: Cross Browser Testing")
     logging.info(" connect to mysql")
+    print("")
     print("connect to sql")
     databank = MysqlDataBank("localhost", "root", "", "test")
     url, deep, time, b1, b2 = databank.get_websubmit(int(web_submit_id))

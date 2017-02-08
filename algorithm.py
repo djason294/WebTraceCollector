@@ -335,7 +335,9 @@ class Monkey2Crawler(AlgoCrawler):
         logging.info(' |depth:%s state:%s| out of domain: %s', depth, current_state.get_id(), url)
         logging.info('==========< BACKTRACK START >==========')
         logging.info('==<BACKTRACK> depth %s -> backtrack to state %s',depth ,current_state.get_id() )
-        self.crawler.other_executor_backtrack(current_state, self.other_executor)
+        self.crawler.backtrack(current_state)
+        if self.executor.other_browserID != 0:
+            self.crawler.other_executor_backtrack(current_state, self.other_executor)
         logging.info('==========< BACKTRACK END   >==========')
 
         #get new event again
@@ -406,12 +408,11 @@ class Monkey2Crawler(AlgoCrawler):
 class CBTCrawler(AlgoCrawler):
     def __init__(self,other_browserID,url):
         self.other_browserID = int(other_browserID)
-        string='Starting 2nd browser, browser ID is: '+ str(self.other_browserID)
-        print(string)
-        logging.info(' CBT_events : '+ string )
-        #not sure init exe and other_exe together
-        #self.executor = executor
+        
         if self.other_browserID != 0 :
+            string='Starting 2nd browser, browser ID is: '+ str(self.other_browserID)
+            print(string)
+            logging.info(' CBT_events : '+ string )
             self.other_executor = CBTExecutor(int(self.other_browserID), url)
         else:
             print("single browser")
@@ -432,11 +433,15 @@ class CBTCrawler(AlgoCrawler):
             self.other_executor.goto_url()
 
         #initial state
+        print('===get initial state')
         initial_state = self.crawler.get_initail_state()
 
         #should check different browser first
         if self.other_browserID != 0 :
+            print('===CBT check state')
             self.check_diff_browser(initial_state)
+            log_list = self.automata.save_log(self.other_executor, initial_state)
+            coor_list = self.automata.save_coor(self.other_executor, initial_state)
 
         self.crawler.run_script_before_crawl(initial_state)
 
@@ -459,8 +464,9 @@ class CBTCrawler(AlgoCrawler):
         print('===change state, start backtrack')
         #will ananlyzing this state,dom is same to the original one
         if self.other_browserID != 0 :
-            self.crawler.other_executor_backtrack(state, self.other_executor)
-        
+            self.crawler.both_executors_backtrack(state, self.other_executor)
+        else:
+            self.crawler.backtrack(state)
         #!!!!!!!!!!!!!!CBT analysis here
         #self.crawler.cbt_is_same_state_dom(self.other_executor )
         #self.check_dom_tree()
@@ -484,7 +490,9 @@ class CBTCrawler(AlgoCrawler):
         logging.info('==========< BACKTRACK START >==========')
         logging.info('==<BACKTRACK> depth %s -> backtrack to state %s',depth ,current_state.get_id() )
         if self.other_browserID != 0 :
-            self.crawler.other_executor_backtrack(current_state, self.other_executor)
+            self.crawler.both_executors_backtrack(current_state, self.other_executor)
+        else:
+            self.crawler.backtrack(current_state)
         logging.info('==========< BACKTRACK END   >==========')
 
     def update_with_new_state(self, current_state, new_state, new_edge, action, depth, dom_list, url):
@@ -494,8 +502,8 @@ class CBTCrawler(AlgoCrawler):
         #save mix pic instead
         self.automata.save_state(new_state, depth)
         self.automata.save_state_shot(self.executor, new_state)
-        self.automata.save_log(self.executor, new_state)
-
+        log_list = self.automata.save_log(self.executor, new_state)
+        coor_list = self.automata.save_coor(self.executor, new_state)
 
 
         #!!!!!!!!!!!!!!CBT analysis here
@@ -503,7 +511,9 @@ class CBTCrawler(AlgoCrawler):
         if self.other_browserID != 0 :
             print('===CBT check state')
             self.check_diff_browser(new_state)
-        
+            log_list = self.automata.save_log(self.other_executor, new_state)
+            coor_list = self.automata.save_coor(self.other_executor, new_state)
+            
         #self.check_dom_tree()
         #str = self.crawler.cbt_is_same_state_dom(self.other_executor )
         #pr_str=''.join(str)
@@ -521,6 +531,7 @@ class CBTCrawler(AlgoCrawler):
         self.automata.save_simple_traces()
 
     def end(self):
+        self.executor.close()
         if self.other_browserID != 0 :
             self.other_executor.close()
         pass
