@@ -54,26 +54,48 @@ class SeleniumCrawler(Crawler):
         self.crawl(1)
         return self.automata
 
+    #the core
     def run_algorithm(self):
         # repeat for trace_amount times
         for i in range( self.configuration.get_trace_amount() ):
-
+            print ('=initial state')
             self.initial()
-
-            while self.action_events:
+            print ('=get into loop')
+            j=0
+            while self.action_events and self.configuration.get_max_depth() != 0:
+                print('==start an action event')
+                #string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
+                string = ''.join([ str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
+                logging.info(' action_events : '+string )
+                #print(' action_events : '+string)
+                print('==get next action')
+                state, action, depth = self.get_next_action()
+                
+                print('==change state')
+                self.change_state(state, action, depth)
+                print('==change edge')
+                edge = self.trigger_action(state, action, depth)
+                print('==update state')
+                new_state,new_depth =self.update_states(state, edge, action, depth)
+                print('==end an action event')
+                print ("new depth:", new_depth)
+                print ("max depth:", self.configuration.get_max_depth())
+                print ("new state:", new_state.get_id(),j)
+                print ("max state:", self.configuration.get_max_states())
+                #check depth
+                if new_depth > self.configuration.get_max_depth():
+                    print("reach max depth")
+                #check state
+                if int(new_state.get_id()) >= self.configuration.get_max_states():
+                    print("reach max state")
+                    break
                 #check time
                 if (time.time() - self.time_start) > self.configuration.get_max_time():
                     logging.info("|||| TIMO OUT |||| end crawl ")
                     break
-
-                string = ''.join([ str(action['action']['clickable'].get_id())+str(action['depth'])+str(action['state'].get_id()) for action in self.action_events ])
-                logging.info(' action_events : '+string )
-
-                state, action, depth = self.get_next_action()
-                self.change_state(state, action, depth)
-                edge = self.trigger_action(state, action, depth)
-                self.update_states(state, edge, action, depth)
-
+                j=j+1
+                
+            print('=end a for_loop')
             self.close()
         
         return self.automata
@@ -82,14 +104,16 @@ class SeleniumCrawler(Crawler):
         self.action_events = []
         #start time
         self.time_start = time.time()
+        print('==prepare algorithm')
         self.algorithm.prepare()
-
+        print('==get current state && add new events')
         current_state = self.automata.get_current_state()
         self.add_new_events(current_state, None, 0)
 
     def close(self):
         self.algorithm.end()
         self.executor.close()
+        print("close browser")
 
     def get_next_action(self):
         event = self.algorithm.get_next_action( self.action_events )
@@ -97,15 +121,11 @@ class SeleniumCrawler(Crawler):
 
     def change_state(self, state, action, depth):
         current_state = self.automata.get_current_state()
-        print( current_state.get_id(), state.get_id() )
 
         if current_state != state:
-            logging.info('==========< BACKTRACK START >==========')
-            logging.info('==<BACKTRACK> depth %s -> backtrack to state %s',depth ,state.get_id() )
-            self.backtrack(state)
-            logging.info('==========< BACKTRACK END   >==========')
+            self.algorithm.change_state(state, action, depth)
 
-        logging.info(' now depth(%s) - max_depth(%s); current state: %s', 0, self.configuration.get_max_depth(), state.get_id() )
+        logging.info(' now depth(%s) - max_depth(%s); current state: %s', depth, self.configuration.get_max_depth(), state.get_id() )
 
     def trigger_action(self, state, action, depth):
         inputs     = state.get_copy_inputs( action['iframe_key'] )
@@ -117,11 +137,13 @@ class SeleniumCrawler(Crawler):
         self.algorithm.trigger_action( state, new_edge, action, depth )
         return new_edge
 
+    #have to run two automata in p2b2?
     def update_states(self, current_state, new_edge, action, depth):
         dom_list, url, is_same = self.is_same_state_dom(current_state)
 
         if is_same:
             self.algorithm.update_with_same_state(current_state, new_edge, action, depth, dom_list, url)
+            return current_state,depth
 
         if self.is_same_domain(url):
             logging.info(' |depth:%s state:%s| change dom to: %s', depth, current_state.get_id(), self.executor.get_url())
@@ -139,12 +161,15 @@ class SeleniumCrawler(Crawler):
 
             if is_newly_added:
                 self.algorithm.update_with_new_state(current_state, new_state, new_edge, action, depth, dom_list, url)
+                return new_state,depth
 
             else:
                 self.algorithm.update_with_old_state(current_state, new_state, new_edge, action, depth, dom_list, url)
+                return new_state,depth
 
         else:
             self.algorithm.update_with_out_of_domain(current_state, new_edge, action, depth, dom_list, url)
+            return current_state,depth
 
     def add_new_events(self, state, prev_state, depth):
         self.algorithm.add_new_events(state, prev_state, depth)
@@ -158,16 +183,22 @@ class SeleniumCrawler(Crawler):
         initial_state = State( dom_list, url )
         is_new, state = self.automata.set_initial_state(initial_state)
         if is_new:
+            logging.info(' is new, save state')
             self.automata.save_state( initial_state, 0)
             self.automata.save_state_shot(self.executor, initial_state)
+            log_list = self.automata.save_log(self.executor,initial_state)
+            coor_list = self.automata.save_coor(self.executor,initial_state)
+            
         else:
             self.automata.change_state(state)
         time.sleep(self.configuration.get_sleep_time())
+        print('return state')
         return state
 
     def run_script_before_crawl(self, prev_state):
         for edge in self.configuration.get_before_script():
-            self.click_event_by_edge(edge)
+            #self.click_event_by_edge(edge)
+            self.executor.click_event_by_edge(edge)
             self.event_history.append(edge)
 
             dom_list, url, is_same = self.is_same_state_dom(prev_state)
@@ -216,7 +247,8 @@ class SeleniumCrawler(Crawler):
         if self.event_history:
             logging.info('==<BACKTRACK> : try last edge of state history')
             self.executor.forward_history()
-            self.click_event_by_edge( self.event_history[-1] )
+            #self.click_event_by_edge( self.event_history[-1] )
+            self.executor.click_event_by_edge( self.event_history[-1] )
             dom_list, url, is_same = self.is_same_state_dom(state)
             if is_same:
                 return True
@@ -229,7 +261,7 @@ class SeleniumCrawler(Crawler):
             return True
         edges = self.automata.get_shortest_path(state)
         for edge in edges:
-            self.click_event_by_edge( edge )
+            self.executor.click_event_by_edge( edge )
             dom_list, url, is_same = self.is_same_state_dom(state)
             if is_same:
                 return True
@@ -243,7 +275,99 @@ class SeleniumCrawler(Crawler):
         if is_same:
             return True
         for edge in edges:
-            self.click_event_by_edge(edge)
+            self.executor.click_event_by_edge(edge)
+            #check again if executor really turn back. if not, sth error, stop
+            state_to = self.automata.get_state_by_id( edge.get_state_to() )
+            dom_list, url, is_same = self.is_same_state_dom(state_to)
+            if not is_same:
+                try:
+                    err = State(dom_list, url)
+                    with open('debug/debug_origin_'+state_to.get_id()+'.txt', 'w') as f:
+                        f.write(state_to.get_all_dom(self.configuration))
+                    with open('debug/debug_restart_'+state_to.get_id()+'.txt', 'w') as f:
+                        f.write(err.get_all_dom(self.configuration))
+                    with open('debug/debug_origin_nor_'+state_to.get_id()+'.txt', 'w') as f:
+                        f.write( state_to.get_all_normalize_dom(self.configuration) )
+                    with open('debug/debug_restart_nor_'+state_to.get_id()+'.txt', 'w') as f:
+                        f.write( err.get_all_normalize_dom(self.configuration) )
+                    logging.error('==<BACKTRACK> cannot traceback to %s \t\t__from crawler.py backtrack()', state_to.get_id() )
+                except Exception as e:  
+                    logging.info('==<BACKTRACK> save diff dom : %s', str(e))
+
+        dom_list, url, is_same = self.is_same_state_dom(state)
+        return is_same
+
+    def both_executors_backtrack(self, state, other_executor=None):
+        # check if depth over max depth , time over max time
+        logging.info("both exe backtrack")
+        print("both exe backtrack")
+        if (time.time() - self.time_start) > self.configuration.get_max_time():
+            logging.info("|||| TIMO OUT |||| end backtrack ")
+            return
+
+        #if url are same, guess they are just javascipt edges
+        if self.executor.get_url() == state.get_url() and other_executor.get_url() == state.get_url():
+            #first, just refresh for javascript button
+            logging.info('==<BACKTRACK> : try refresh')
+            self.executor.refresh()
+            other_executor.refresh()
+            #!!!!!!!!CBT
+            dom_list, url, is_same = self.is_same_state_dom(state)
+            if is_same:
+                return True
+
+        #if can't , try go back form history
+        logging.info('==<BACKTRACK> : both exe try back_history ')
+        before_url = self.executor.get_url()
+        self.executor.back_history()
+        print('exe back')
+        dom_list, after_url, is_same = self.is_same_state_dom(state)
+        if before_url == other_executor.get_url():
+            other_executor.back_history()
+            print('other exe back')
+        
+        if is_same:
+            return True
+
+        #if can't , try do last edge of state history
+        if self.event_history:
+            logging.info('==<BACKTRACK> : try last edge of state history')
+            self.executor.forward_history()
+            other_executor.forward_history()
+            self.executor.click_event_by_edge( self.event_history[-1] )
+            other_executor.click_event_by_edge( self.event_history[-1] )
+            dom_list, url, is_same = self.is_same_state_dom(state)
+            if is_same:
+                return True
+
+        #if can't, try go through all edge
+        logging.info('==<BACKTRACK> : start form base ur')
+        self.executor.goto_url()
+        other_executor.goto_url()
+        dom_list, url, is_same = self.is_same_state_dom(state)
+        if is_same:
+            return True
+        edges = self.automata.get_shortest_path(state)
+        for edge in edges:
+            self.executor.click_event_by_edge( edge )
+            other_executor.click_event_by_edge( edge )
+            dom_list, url, is_same = self.is_same_state_dom(state)
+            if is_same:
+                return True
+
+        #if can't, restart and try go again
+        logging.info('==<BACKTRACK> : restart driver')
+        edges = self.automata.get_shortest_path(state)
+        self.executor.restart_app()
+        self.executor.goto_url()
+        other_executor.restart_app()
+        other_executor.goto_url()
+        dom_list, url, is_same = self.is_same_state_dom(state)
+        if is_same:
+            return True
+        for edge in edges:
+            self.executor.click_event_by_edge(edge)
+            other_executor.click_event_by_edge(edge)
             #check again if executor really turn back. if not, sth error, stop
             state_to = self.automata.get_state_by_id( edge.get_state_to() )
             dom_list, url, is_same = self.is_same_state_dom(state_to)
@@ -268,15 +392,6 @@ class SeleniumCrawler(Crawler):
     #=========================================================================================
     # EVENT
     #=========================================================================================
-    def click_event_by_edge(self, edge):
-        self.executor.switch_iframe_and_get_source( edge.get_iframe_list() )
-        self.executor.fill_selects( edge.get_selects() )
-        self.executor.fill_inputs_text( edge.get_inputs() )
-        #self.executor.fill_checkboxes( edge.get_checkboxes() )
-        #self.executor.fill_radios( edge.get_radios() )
-        self.executor.fire_event( edge.get_clickable() )
-        #time.sleep(self.configuration.get_sleep_time())
-
     def make_value(self, edge):
         rand = random.randint(0,1000)
 
@@ -329,6 +444,7 @@ class SeleniumCrawler(Crawler):
             return False
 
     def is_same_state_dom(self, cs):
+        #cs is other executor's state,or previous state
         dom_list, url = self.executor.get_dom_list(self.configuration)
         cs_dom_list = cs.get_dom_list(self.configuration)
         if url != cs.get_url():
@@ -341,6 +457,21 @@ class SeleniumCrawler(Crawler):
                     return dom_list, url, False
         print ('same dom to: ', cs.get_id())
         return dom_list, url, True
+
+    def cbt_is_same_state_dom(self, cs):
+        #cs is other executor
+        dom_list, url = self.executor.get_dom_list(self.configuration)
+        cs_dom_list = cs.get_dom_list(self.configuration)
+        if url != cs.get_url():
+            str=("urls are different:%s v.s %s",url,cs.get_url())
+            return str
+        else:
+            for dom, cs_dom in zip(dom_list, cs_dom_list):
+                if not dom == cs_dom:
+                    str=("dom are different")
+                    return str
+        str = 'same dom to: ', cs.get_id()
+        return str
 
 
 #=========================================================================================
@@ -380,7 +511,7 @@ class SeleniumCrawler(Crawler):
         # use a int to select sample of mutation traces
         mutation_traces = self.mutation.get_mutation_traces()
         #mutation_traces = random.sample( mutation_traces, 
-        #    min( self.configuration.get_max_mutation_traces(), len(mutation_traces) ) )
+        #min( self.configuration.get_max_mutation_traces(), len(mutation_traces) ) )
         return mutation_traces
 
     def run_mutant_script(self, prev_state, mutation_trace=None):
@@ -394,7 +525,7 @@ class SeleniumCrawler(Crawler):
             new_edge.set_state_from( prev_state.get_id() )
             if mutation_trace:
                 self.make_mutant_value(new_edge, mutation_trace[depth])
-            self.click_event_by_edge(new_edge)
+            self.executor.click_event_by_edge(new_edge)
             self.event_history.append(new_edge)
 
             dom_list, url, is_same = self.is_same_state_dom(prev_state)

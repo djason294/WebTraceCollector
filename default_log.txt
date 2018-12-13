@@ -1,0 +1,20 @@
+
+[MAIN ERROR-20161030193756]: Traceback (most recent call last):
+  File "controller.py", line 257, in <module>
+    if not os.path.isdir(sys.argv[3]) or not os.path.exists(sys.argv[3]):
+IndexError: list index out of range
+
+[MAIN ERROR-20161030210954]: Traceback (most recent call last):
+  File "controller.py", line 258, in <module>
+    raise ValueError('not found folder')
+ValueError: not found folder
+
+[MAIN ERROR-20161030211430]: Traceback (most recent call last):
+  File "controller.py", line 260, in <module>
+    raise ValueError('dirname already exist')
+ValueError: dirname already exist
+
+[MAIN ERROR-20161030211718]: Traceback (most recent call last):
+  File "controller.py", line 261, in <module>
+    raise ValueError('dirname already exist')
+ValueError: dirname already exist

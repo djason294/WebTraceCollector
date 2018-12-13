@@ -53,9 +53,9 @@ class MysqlDataBank(DataBank):
 
     @classmethod
     def get_websubmit(cls, web_submit_id):        
-        url, deep, time = cls._connect.get_submit_by_id(web_submit_id)
+        url, deep, time, browser1, browser2 = cls._connect.get_submit_by_id(web_submit_id)
         web_inputs = cls._connect.get_all_inputs_by_id(web_submit_id)
-        return url, deep, time
+        return url, deep, time, browser1, browser2
 
     @classmethod
     def get_data(cls, data_type, data_id):
@@ -117,7 +117,7 @@ class MysqlDataBank(DataBank):
 class InlineDataBank(DataBank):
     @classmethod
     def __init__(cls, host, user, password, db):
-        cls._connect = mysqlConnect(host, user, password, db)
+        pass
 
     @classmethod
     def get_types(cls):
@@ -138,7 +138,7 @@ class InlineDataBank(DataBank):
 
     @classmethod
     def get_data(cls, data_type, data_id):
-        return [ '0' ]
+        return ['0']
 
     @classmethod
     def get_mutation_data_set(cls, data_type, data_id, modes):

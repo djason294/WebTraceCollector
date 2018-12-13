@@ -16,8 +16,17 @@ else:
 class Visualizer:
     @classmethod
     def generate_html(cls, template_dir, automata_file):
-        assert os.path.isdir(template_dir) and os.path.exists(template_dir)
-        assert os.path.isfile(automata_file) and os.path.exists(automata_file)
+        
+        try:
+            assert os.path.isdir(template_dir) and os.path.exists(template_dir)
+            assert os.path.isfile(automata_file) and os.path.exists(automata_file)
+        except Exception as e:
+            print ( 'Exception: %s in generate_html() of Visualizer' % (str(e)) )
+        
+        
+        #assert os.path.isdir(template_dir) and os.path.exists(template_dir)
+        #assert os.path.isfile(automata_file) and os.path.exists(automata_file)
+        
         # copy files from template_dir to the location of the automata file
         src = template_dir
         dst = os.path.dirname(os.path.realpath(automata_file))
@@ -66,4 +75,7 @@ class Visualizer:
                 input_graph.string = input_graph_str
                 sf.seek(0)
                 sf.truncate()
-                sf.write(HTMLParser().unescape(soup.prettify()))
+                if sys.version_info.major >= 3:
+                    sf.write(HTMLParser().unescape(soup.prettify()))
+                else:
+                    sf.write(HTMLParser.HTMLParser().unescape(soup.prettify()))

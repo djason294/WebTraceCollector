@@ -53,16 +53,20 @@ class Configuration:
 # Selenium Web Driver
 #==============================================================================================================================
 class SeleniumConfiguration(Configuration):
-    def __init__(self, browserID, url, folderpath=None, dirname=None ):
+    def __init__(self, browserID, other_browserID, url, folderpath=None, dirname=None ):
         super(SeleniumConfiguration, self).__init__()
         self._browserID = browserID
+        self._other_browserID = other_browserID
         self._url = url
         self._dirname = dirname
         self._folderpath = folderpath
         self._root_path = ''
         self._file_path = {}
         self.set_file_path()
-
+        self._browsersize = {
+            'x':1280,
+            'y':960,
+        }
         self._automata_fname = 'automata.json'
         self._traces_fname = 'traces.json'
         self._dom_inside_iframe = True
@@ -103,7 +107,9 @@ class SeleniumConfiguration(Configuration):
         self._file_path = {
             'root': self._root_path,
             'dom': os.path.join(self._root_path, 'dom'),
-            'state': os.path.join(self._root_path, 'screenshot', 'state')
+            'state': os.path.join(self._root_path, 'screenshot', 'state'),
+            'log': os.path.join(self._root_path, 'log'),
+            'coor': os.path.join(self._root_path, 'coor')
         }
 
     def get_abs_path(self, my_type):
@@ -116,8 +122,14 @@ class SeleniumConfiguration(Configuration):
     def set_browserID(self, app_name):
         self._browserID = browserID
 
+    def set_other_browserID(self, app_name):
+        self._other_browserID = other_browserID
+
     def get_browserID(self):
         return self._browserID
+
+    def get_other_browserID(self):
+        return self._other_browserID
 
 #==============================================================================================================
 # crawler configuration
@@ -302,8 +314,10 @@ class SeleniumConfiguration(Configuration):
         config_data['sleep_time'] = self._sleep_time
         config_data['url'] = self._url
         config_data['browser_id'] = str(self._browserID)
+        config_data['other_browser_id'] = str(self._other_browserID)
         config_data['dirname'] = self._dirname
         config_data['folderpath'] = self._folderpath
+        config_data['browser_size'] = self._browsersize
         #=============================================================================================
         config_data['automata_fname'] = self._automata_fname
         config_data['root_path'] = posixpath.join(
@@ -314,6 +328,12 @@ class SeleniumConfiguration(Configuration):
         )
         config_data['state_path'] = posixpath.join(
             posixpath.join(*(self.get_path('state').split(os.sep)))
+        )
+        config_data['log_path'] = posixpath.join(
+            posixpath.join(*(self.get_path('log').split(os.sep)))
+        )
+        config_data['coor_path'] = posixpath.join(
+            posixpath.join(*(self.get_path('coor').split(os.sep)))
         )
         #=============================================================================================
         #new config
@@ -338,7 +358,8 @@ class SeleniumConfiguration(Configuration):
 class Browser(Enum):
     FireFox = 1
     Chrome = 2
-    PhantomJS = 3
+    Ie = 3
+    PhantomJS = 4
 
 class MutationMethod(Enum):
     Simple = 1

@@ -1,0 +1,20 @@
+
+connect to sql
+start Cross Browser Testing...
+single browser
+=initial state
+==prepare algorithm
+===get initial state
+===save log
+Message: POST /session/83517d8d-e6bb-4908-9fd6-8b4ddf83b3f0/log did not match a known command
+
+===log record finished
+===save coor
+===get coor
+===coor record finished
+return state
+==get current state && add new events
+=get into loop
+=end a for_loop
+close browser
+ end! save automata...
